@@ -75,7 +75,8 @@
 
         <!-- Summary Cards -->
         <div class="bg-gradient-to-br from-blue-500 to-blue-700 rounded-3xl p-6 text-white shadow-lg">
-            <p class="text-blue-100 text-sm font-medium mb-1">ยอดเงินคงเหลือสุทธิ</p>
+            <!-- ปรับให้ชื่อสรุปยอดเปลี่ยนตามเดือนที่เลือก -->
+            <p class="text-blue-100 text-sm font-medium mb-1" id="summaryTitle">สรุปยอดประจำเดือน</p>
             <p class="text-4xl font-bold tracking-tight mb-6">฿<span id="totalBalance">0.00</span></p>
             
             <div class="grid grid-cols-2 gap-4 bg-white/10 rounded-2xl p-4 backdrop-blur-sm">
@@ -184,12 +185,12 @@
             </form>
         </div>
 
-        <!-- History List (Grouped By View Mode) -->
+        <!-- History List -->
         <div>
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 px-1">
                 <h2 class="text-lg font-bold text-gray-800">ประวัติรายการ</h2>
                 <div class="flex bg-gray-200 p-1 rounded-2xl w-full sm:w-auto">
-                    <button onclick="window.changeViewMode('daily')" id="btnDaily" class="flex-1 sm:flex-initial px-4 py-1.5 text-xs font-bold rounded-xl bg-white text-blue-600 shadow-sm transition">รายวัน</button>
+                    <button onclick="window.changeViewMode('daily')" id="btnDaily" class="flex-1 sm:flex-initial px-4 py-1.5 text-xs font-bold rounded-xl bg-white text-blue-600 shadow-sm transition">จัดกลุ่มรายวัน</button>
                     <button onclick="window.changeViewMode('monthly')" id="btnMonthly" class="flex-1 sm:flex-initial px-4 py-1.5 text-xs font-bold rounded-xl text-gray-600 transition">รายเดือน</button>
                     <button onclick="window.changeViewMode('yearly')" id="btnYearly" class="flex-1 sm:flex-initial px-4 py-1.5 text-xs font-bold rounded-xl text-gray-600 transition">รายปี</button>
                 </div>
@@ -213,14 +214,13 @@
         import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
-  apiKey: "AIzaSyDBydckxh1dZ3aohTexE7LWQ6RLMKKMiss",
-  authDomain: "nomoney-6004b.firebaseapp.com",
-  projectId: "nomoney-6004b",
-  storageBucket: "nomoney-6004b.firebasestorage.app",
-  messagingSenderId: "235990702",
-  appId: "1:235990702:web:8b935086e9837163a8073f",
-  measurementId: "G-BL6RJW3M7W"
-};
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -233,8 +233,8 @@
         const authError = document.getElementById('authError');
         const userEmailSpan = document.getElementById('userEmail');
         const monthPicker = document.getElementById('monthPicker');
+        const summaryTitle = document.getElementById('summaryTitle');
 
-        // ตั้งค่า Month Picker ให้เป็นเดือนปัจจุบันโดยอัตโนมัติ
         const now = new Date();
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -244,7 +244,7 @@
         let expenses = [];
         let myDoughnutChart = null; 
         let myLineChart = null;
-        let currentMonthFilter = currentYYYYMM; // กำหนดค่าเริ่มต้นเป็นเดือนปัจจุบัน
+        let currentMonthFilter = currentYYYYMM; 
         let currentPaymentFilter = 'all';
         let currentViewMode = 'daily'; 
         let editingId = null; 
@@ -374,6 +374,14 @@
             updateUI(); 
         };
 
+        // ฟังก์ชันแปลง YYYY-MM เป็นภาษาไทย
+        function getMonthNameThai(yyyy_mm) {
+            if (!yyyy_mm || yyyy_mm === 'all') return 'รวมทุกเดือนที่บันทึกไว้';
+            const [y, m] = yyyy_mm.split('-');
+            const monthNames = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+            return `เดือน ${monthNames[parseInt(m) - 1]} ${parseInt(y) + 543}`;
+        }
+
         function updateCharts(filteredData) {
             Chart.defaults.font.family = "'Prompt', sans-serif";
             let general = 0, fixed = 0, installment = 0;
@@ -402,30 +410,78 @@
                         borderWidth: 0, hoverOffset: 4
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: {size: 11} } } }, cutout: '70%' }
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { position: 'right', labels: { boxWidth: 10, font: {size: 11, family: "'Prompt', sans-serif"} } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) label += ': ';
+                                    if (context.parsed !== null) label += '฿' + context.parsed.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                                    return label;
+                                }
+                            }
+                        }
+                    }, 
+                    cutout: '70%' 
+                }
             });
 
             const sortedDates = Object.keys(dailyExpenses).sort((a, b) => {
                 const [d1, m1, y1] = a.split('/'); const [d2, m2, y2] = b.split('/');
                 return new Date(y1, m1 - 1, d1) - new Date(y2, m2 - 1, d2);
             });
+            
+            const isSingleMonth = currentMonthFilter !== 'all';
+            
             const lCtx = document.getElementById('lineChart').getContext('2d');
             if (myLineChart) myLineChart.destroy();
             myLineChart = new Chart(lCtx, {
                 type: 'line',
                 data: {
-                    labels: sortedDates.map(d => d.substring(0,5)),
+                    // ถ้าเลือกเป็นเดือน ให้แกน X แสดงแค่ "วันที่ (1, 2, 3...)" จะได้ไม่อึดอัด
+                    labels: sortedDates.map(d => isSingleMonth ? parseInt(d.split('/')[0]) : d.substring(0,5)),
                     datasets: [{
+                        label: 'รายจ่าย',
                         data: sortedDates.map(date => dailyExpenses[date]),
                         borderColor: '#EF4444', backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                        borderWidth: 2, fill: true, tension: 0.4, pointRadius: 0
+                        borderWidth: 2, fill: true, tension: 0.4, pointRadius: 2, pointHoverRadius: 5
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { display: false }, x: { grid: { display: false } } } }
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                title: function(context) {
+                                    return 'วันที่ ' + sortedDates[context[0].dataIndex];
+                                },
+                                label: function(context) {
+                                    return ' ยอดใช้จ่าย: ฿' + context.parsed.y.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                                }
+                            }
+                        }
+                    }, 
+                    scales: { 
+                        y: { display: false }, 
+                        x: { 
+                            grid: { display: false },
+                            ticks: { font: { family: "'Prompt', sans-serif", size: 10 }, color: '#9CA3AF' }
+                        } 
+                    } 
+                }
             });
         }
 
         function updateUI() {
+            // อัปเดตชื่อหัวข้อสรุปยอด
+            summaryTitle.innerText = `สรุปยอด (${getMonthNameThai(currentMonthFilter)})`;
+
             let filteredExpenses = expenses;
 
             if (currentMonthFilter !== 'all') {
@@ -451,6 +507,7 @@
                 document.getElementById('totalBalance').innerText = '0.00';
                 document.getElementById('totalIncome').innerText = '0.00';
                 document.getElementById('totalExpense').innerText = '0.00';
+                updateCharts([]);
                 return;
             } else {
                 emptyState.classList.add('hidden');
