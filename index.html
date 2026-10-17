@@ -213,14 +213,15 @@
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
+    const firebaseConfig = {
+  apiKey: "AIzaSyDBydckxh1dZ3aohTexE7LWQ6RLMKKMiss",
+  authDomain: "nomoney-6004b.firebaseapp.com",
+  projectId: "nomoney-6004b",
+  storageBucket: "nomoney-6004b.firebasestorage.app",
+  messagingSenderId: "235990702",
+  appId: "1:235990702:web:8b935086e9837163a8073f",
+  measurementId: "G-BL6RJW3M7W"
+};
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
