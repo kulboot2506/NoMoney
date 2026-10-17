@@ -184,15 +184,26 @@
             </form>
         </div>
 
-        <!-- History List -->
+        <!-- History List (Grouped By View Mode) -->
         <div>
-            <h2 class="text-lg font-bold text-gray-800 mb-4 px-1">ประวัติรายการ</h2>
-            <div id="expenseList" class="space-y-3"></div>
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 px-1">
+                <h2 class="text-lg font-bold text-gray-800">ประวัติรายการ</h2>
+                <!-- View Mode Tabs (รายวัน / รายเดือน / รายปี) -->
+                <div class="flex bg-gray-200 p-1 rounded-2xl w-full sm:w-auto">
+                    <button onclick="window.changeViewMode('daily')" id="btnDaily" class="flex-1 sm:flex-initial px-4 py-1.5 text-xs font-bold rounded-xl bg-white text-blue-600 shadow-sm transition">รายวัน</button>
+                    <button onclick="window.changeViewMode('monthly')" id="btnMonthly" class="flex-1 sm:flex-initial px-4 py-1.5 text-xs font-bold rounded-xl text-gray-600 transition">รายเดือน</button>
+                    <button onclick="window.changeViewMode('yearly')" id="btnYearly" class="flex-1 sm:flex-initial px-4 py-1.5 text-xs font-bold rounded-xl text-gray-600 transition">รายปี</button>
+                </div>
+            </div>
+
+            <!-- Container แสดงผลแบบกลุ่ม -->
+            <div id="groupedExpenseList" class="space-y-4"></div>
+
             <div id="emptyState" class="hidden text-center py-12 px-4">
                 <div class="bg-gray-100 w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4">
                     <i class="fas fa-receipt text-3xl text-gray-400"></i>
                 </div>
-                <p class="text-gray-500 font-medium">ยังไม่มีรายการในเดือนนี้</p>
+                <p class="text-gray-500 font-medium">ยังไม่มีรายการในเงื่อนไขนี้</p>
             </div>
         </div>
     </div>
@@ -203,18 +214,15 @@
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-        // ==========================================
-        // ใส่ Config ของ Firebase ที่นี่
-        // ==========================================
         const firebaseConfig = {
-            apiKey: "AIzaSyDBydckxh1dZ3aohTexE7LWQ6RLMKKMiss",
-            authDomain: "nomoney-6004b.firebaseapp.com",
-            projectId: "nomoney-6004b",
-            storageBucket: "nomoney-6004b.firebasestorage.app",
-            messagingSenderId: "235990702",
-            appId: "1:235990702:web:8b935086e9837163a8073f",
-            measurementId: "G-BL6RJW3M7W"
-        };
+  apiKey: "AIzaSyDBydckxh1dZ3aohTexE7LWQ6RLMKKMiss",
+  authDomain: "nomoney-6004b.firebaseapp.com",
+  projectId: "nomoney-6004b",
+  storageBucket: "nomoney-6004b.firebasestorage.app",
+  messagingSenderId: "235990702",
+  appId: "1:235990702:web:8b935086e9837163a8073f",
+  measurementId: "G-BL6RJW3M7W"
+};
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -227,15 +235,12 @@
         const authError = document.getElementById('authError');
         const userEmailSpan = document.getElementById('userEmail');
 
-        // ตรวจสอบสถานะการล็อกอินแบบ Real-time ของ Firebase
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                // ล็อกอินแล้ว
                 userEmailSpan.innerText = user.email;
                 showApp();
-                startAppListener(); // เริ่มดึงข้อมูล
+                startAppListener();
             } else {
-                // ยังไม่ได้ล็อกอิน
                 hideApp();
             }
         });
@@ -275,19 +280,17 @@
             document.body.style.overflow = 'hidden';
         }
 
-        // ==========================================
-        // แอประบบจัดการรายรับ-รายจ่าย (Firebase Firestore)
-        // ==========================================
         let expenses = [];
         let myDoughnutChart = null; 
         let myLineChart = null;
         let currentMonthFilter = 'all'; 
         let currentPaymentFilter = 'all';
+        let currentViewMode = 'daily'; // daily, monthly, yearly
         let editingId = null; 
         let unsubscribe = null;
 
         const form = document.getElementById('expenseForm');
-        const expenseList = document.getElementById('expenseList');
+        const groupedExpenseList = document.getElementById('groupedExpenseList');
         const emptyState = document.getElementById('emptyState');
         const categorySelect = document.getElementById('category');
         const submitBtn = document.getElementById('submitBtn');
@@ -297,8 +300,17 @@
 
         document.getElementById('dateInput').valueAsDate = new Date();
 
+        window.changeViewMode = function(mode) {
+            currentViewMode = mode;
+            // สลับสีปุ่ม Tab
+            document.getElementById('btnDaily').className = mode === 'daily' ? 'flex-1 sm:flex-initial px-4 py-1.5 text-xs font-bold rounded-xl bg-white text-blue-600 shadow-sm transition' : 'flex-1 sm:flex-initial px-4 py-1.5 text-xs font-bold rounded-xl text-gray-600 transition';
+            document.getElementById('btnMonthly').className = mode === 'monthly' ? 'flex-1 sm:flex-initial px-4 py-1.5 text-xs font-bold rounded-xl bg-white text-blue-600 shadow-sm transition' : 'flex-1 sm:flex-initial px-4 py-1.5 text-xs font-bold rounded-xl text-gray-600 transition';
+            document.getElementById('btnYearly').className = mode === 'yearly' ? 'flex-1 sm:flex-initial px-4 py-1.5 text-xs font-bold rounded-xl bg-white text-blue-600 shadow-sm transition' : 'flex-1 sm:flex-initial px-4 py-1.5 text-xs font-bold rounded-xl text-gray-600 transition';
+            updateUI();
+        };
+
         function startAppListener() {
-            if (unsubscribe) unsubscribe(); // ป้องกันการดึงซ้ำซ้อน
+            if (unsubscribe) unsubscribe();
             unsubscribe = onSnapshot(expensesCol, (snapshot) => {
                 expenses = [];
                 snapshot.forEach((doc) => {
@@ -418,51 +430,22 @@
             if (currentMonthFilter !== 'all') filteredExpenses = filteredExpenses.filter(item => item.date.includes(currentMonthFilter));
             if (currentPaymentFilter !== 'all') filteredExpenses = filteredExpenses.filter(item => item.payment === currentPaymentFilter);
 
-            expenseList.innerHTML = '';
+            groupedExpenseList.innerHTML = '';
             let tIncome = 0, tExpense = 0;
 
             if (filteredExpenses.length === 0) {
                 emptyState.classList.remove('hidden');
+                document.getElementById('totalBalance').innerText = '0';
+                document.getElementById('totalIncome').innerText = '0';
+                document.getElementById('totalExpense').innerText = '0';
+                return;
             } else {
                 emptyState.classList.add('hidden');
             }
 
-            const sortedForTable = [...filteredExpenses].sort((a, b) => {
-                const [d1, m1, y1] = a.date.split('/'); const [d2, m2, y2] = b.date.split('/');
-                return new Date(y2, m2 - 1, d2) - new Date(y1, m1 - 1, d1);
-            });
-
-            sortedForTable.forEach(item => {
+            filteredExpenses.forEach(item => {
                 if (item.transType === 'รายรับ') tIncome += item.amount;
                 else tExpense += item.amount;
-
-                let catColor = item.category === 'รายรับ' ? 'bg-green-100 text-green-700' :
-                               item.category === 'คงที่' ? 'bg-orange-100 text-orange-700' : 
-                               item.category === 'ผ่อนชำระ' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700';
-                let payIcon = item.payment === 'บัตรเครดิต' ? '<i class="fas fa-credit-card text-purple-500 mr-1"></i>' : '<i class="fas fa-money-bill-wave text-blue-500 mr-1"></i>';
-                let amountColor = item.transType === 'รายรับ' ? 'text-green-500' : 'text-gray-800';
-                let amountPrefix = item.transType === 'รายรับ' ? '+' : '-';
-
-                const card = document.createElement('div');
-                card.className = "bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-3";
-                card.innerHTML = `
-                    <div class="flex-grow w-full md:w-auto">
-                        <div class="flex justify-between md:justify-start items-center gap-2 mb-1">
-                            <span class="text-xs text-gray-400 font-medium"><i class="far fa-calendar-alt mr-1"></i>${item.date}</span>
-                            <span class="px-2 py-0.5 rounded-md text-[10px] font-bold ${catColor}">${item.category}</span>
-                        </div>
-                        <div class="text-base font-bold text-gray-800 truncate w-full">${item.desc}</div>
-                        <div class="text-xs text-gray-500 mt-1">${payIcon}${item.payment}</div>
-                    </div>
-                    <div class="flex flex-row md:flex-col items-center md:items-end justify-between w-full md:w-auto border-t md:border-0 border-gray-50 pt-3 md:pt-0 mt-1 md:mt-0">
-                        <div class="text-lg font-bold ${amountColor}">${amountPrefix}฿${item.amount.toLocaleString()}</div>
-                        <div class="flex gap-2 mt-0 md:mt-2">
-                            <button onclick="window.editExpense('${item.id}')" class="w-8 h-8 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center hover:bg-blue-100 transition"><i class="fas fa-edit"></i></button>
-                            <button onclick="window.deleteExpense('${item.id}')" class="w-8 h-8 rounded-full bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 transition"><i class="fas fa-trash"></i></button>
-                        </div>
-                    </div>
-                `;
-                expenseList.appendChild(card);
             });
 
             document.getElementById('totalBalance').innerText = (tIncome - tExpense).toLocaleString();
@@ -470,6 +453,106 @@
             document.getElementById('totalExpense').innerText = tExpense.toLocaleString();
 
             updateCharts(filteredExpenses);
+
+            // จัดกลุ่มข้อมูลตามมุมมอง (Daily, Monthly, Yearly)
+            const groups = {};
+            filteredExpenses.forEach(item => {
+                const [d, m, y] = item.date.split('/');
+                let groupKey = item.date; // ค่าเริ่มต้น (รายวัน)
+                
+                if (currentViewMode === 'monthly') {
+                    groupKey = `${m}/${y}`; // รวมเป็นเดือน/ปี
+                } else if (currentViewMode === 'yearly') {
+                    groupKey = `${y}`; // รวมเป็นปี
+                }
+
+                if (!groups[groupKey]) groups[groupKey] = [];
+                groups[groupKey].push(item);
+            });
+
+            // เรียงลำดับกลุ่ม (ล่าสุดมาก่อน)
+            const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
+                if (currentViewMode === 'yearly') return b.localeCompare(a);
+                if (currentViewMode === 'monthly') {
+                    const [mA, yA] = a.split('/'); const [mB, yB] = b.split('/');
+                    return new Date(yB, mB - 1) - new Date(yA, mA - 1);
+                }
+                const [d1, m1, y1] = a.split('/'); const [d2, m2, y2] = b.split('/');
+                return new Date(y2, m2 - 1, d2) - new Date(y1, m1 - 1, d1);
+            });
+
+            // สร้าง HTML แสดงผลทีละกลุ่ม
+            sortedGroupKeys.forEach(groupKey => {
+                const itemsInGroup = groups[groupKey];
+                
+                // คำนวณสรุปยอดในกลุ่มนั้นๆ
+                let groupIncome = 0, groupExpense = 0;
+                itemsInGroup.forEach(i => {
+                    if (i.transType === 'รายรับ') groupIncome += i.amount;
+                    else groupExpense += i.amount;
+                });
+
+                const groupContainer = document.createElement('div');
+                groupContainer.className = "bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-4";
+
+                // Header ของแต่ละกลุ่ม (แสดงวันที่/เดือน/ปี และยอดรวม)
+                let headerTitle = `📅 วันที่ ${groupKey}`;
+                if (currentViewMode === 'monthly') headerTitle = `🗓️ เดือน ${groupKey}`;
+                if (currentViewMode === 'yearly') headerTitle = `📆 ปี พ.ศ. ${parseInt(groupKey)+543} (${groupKey})`;
+
+                let groupHeaderHTML = `
+                    <div class="bg-gray-50 px-5 py-3 border-b border-gray-100 flex justify-between items-center">
+                        <span class="text-xs font-bold text-gray-600">${headerTitle}</span>
+                        <div class="text-xs font-bold space-x-2">
+                            ${groupIncome > 0 ? `<span class="text-green-600">+฿${groupIncome.toLocaleString()}</span>` : ''}
+                            ${groupExpense > 0 ? `<span class="text-red-500">-฿${groupExpense.toLocaleString()}</span>` : ''}
+                        </div>
+                    </div>
+                `;
+
+                // รายการย่อยข้างในกลุ่ม
+                let itemsHTML = '<div class="divide-y divide-gray-50">';
+                
+                // เรียงรายการข้างในกลุ่มจากใหม่ไปเก่า
+                itemsInGroup.sort((a, b) => {
+                    const [d1, m1, y1] = a.date.split('/'); const [d2, m2, y2] = b.date.split('/');
+                    return new Date(y2, m2 - 1, d2) - new Date(y1, m1 - 1, d1);
+                }).forEach(item => {
+                    let catColor = item.category === 'รายรับ' ? 'bg-green-100 text-green-700' :
+                                   item.category === 'คงที่' ? 'bg-orange-100 text-orange-700' : 
+                                   item.category === 'ผ่อนชำระ' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700';
+                    let payIcon = item.payment === 'บัตรเครดิต' ? '<i class="fas fa-credit-card text-purple-500 mr-1"></i>' : '<i class="fas fa-money-bill-wave text-blue-500 mr-1"></i>';
+                    let amountColor = item.transType === 'รายรับ' ? 'text-green-500' : 'text-gray-800';
+                    let amountPrefix = item.transType === 'รายรับ' ? '+' : '-';
+
+                    // แสดงวันที่ย่อยเฉพาะกรณีอยู่ในโหมดรายเดือนหรือรายปี
+                    let dateSubText = currentViewMode !== 'daily' ? `<span class="text-[10px] text-gray-400 mr-2"><i class="far fa-calendar-alt mr-1"></i>${item.date}</span>` : '';
+
+                    itemsHTML += `
+                        <div class="p-4 flex justify-between items-center hover:bg-gray-50/50 transition">
+                            <div class="flex-grow">
+                                <div class="flex items-center gap-2 mb-1">
+                                    ${dateSubText}
+                                    <span class="px-2 py-0.5 rounded-md text-[10px] font-bold ${catColor}">${item.category}</span>
+                                </div>
+                                <div class="text-sm font-bold text-gray-800">${item.desc}</div>
+                                <div class="text-[11px] text-gray-500 mt-0.5">${payIcon}${item.payment}</div>
+                            </div>
+                            <div class="flex items-center gap-4">
+                                <div class="text-base font-bold ${amountColor}">${amountPrefix}฿${item.amount.toLocaleString()}</div>
+                                <div class="flex gap-1">
+                                    <button onclick="window.editExpense('${item.id}')" class="w-7 h-7 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center hover:bg-blue-100 transition"><i class="fas fa-edit text-xs"></i></button>
+                                    <button onclick="window.deleteExpense('${item.id}')" class="w-7 h-7 rounded-full bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 transition"><i class="fas fa-trash text-xs"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                itemsHTML += '</div>';
+
+                groupContainer.innerHTML = groupHeaderHTML + itemsHTML;
+                groupedExpenseList.appendChild(groupContainer);
+            });
         }
 
         window.editExpense = function(id) {
