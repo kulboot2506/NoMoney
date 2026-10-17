@@ -152,7 +152,6 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-600 mb-2">จำนวนเงิน (บาท)</label>
-                    <!-- ปรับให้ใส่ทศนิยมได้โดยใช้ step="any" และ min="0.01" -->
                     <input type="number" id="amount" required min="0.01" step="any" placeholder="0.00" class="w-full bg-gray-50 border border-gray-200 p-3 text-lg font-semibold text-blue-600 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
                 </div>
 
@@ -233,6 +232,34 @@
         const mainApp = document.getElementById('mainApp');
         const authError = document.getElementById('authError');
         const userEmailSpan = document.getElementById('userEmail');
+        const monthPicker = document.getElementById('monthPicker');
+
+        // ตั้งค่า Month Picker ให้เป็นเดือนปัจจุบันโดยอัตโนมัติ
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const currentYYYYMM = `${year}-${month}`;
+        monthPicker.value = currentYYYYMM;
+
+        let expenses = [];
+        let myDoughnutChart = null; 
+        let myLineChart = null;
+        let currentMonthFilter = currentYYYYMM; // กำหนดค่าเริ่มต้นเป็นเดือนปัจจุบัน
+        let currentPaymentFilter = 'all';
+        let currentViewMode = 'daily'; 
+        let editingId = null; 
+        let unsubscribe = null;
+
+        const form = document.getElementById('expenseForm');
+        const groupedExpenseList = document.getElementById('groupedExpenseList');
+        const emptyState = document.getElementById('emptyState');
+        const categorySelect = document.getElementById('category');
+        const submitBtn = document.getElementById('submitBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const formTitle = document.getElementById('formTitle');
+        const repeatConfigDiv = document.getElementById('repeatConfig');
+
+        document.getElementById('dateInput').valueAsDate = new Date();
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
@@ -278,27 +305,6 @@
             mainApp.classList.add('opacity-0');
             document.body.style.overflow = 'hidden';
         }
-
-        let expenses = [];
-        let myDoughnutChart = null; 
-        let myLineChart = null;
-        let currentMonthFilter = 'all'; 
-        let currentPaymentFilter = 'all';
-        let currentViewMode = 'daily'; 
-        let editingId = null; 
-        let unsubscribe = null;
-
-        const form = document.getElementById('expenseForm');
-        const groupedExpenseList = document.getElementById('groupedExpenseList');
-        const emptyState = document.getElementById('emptyState');
-        const categorySelect = document.getElementById('category');
-        const submitBtn = document.getElementById('submitBtn');
-        const cancelBtn = document.getElementById('cancelBtn');
-        const formTitle = document.getElementById('formTitle');
-        const repeatConfigDiv = document.getElementById('repeatConfig');
-        const monthPicker = document.getElementById('monthPicker');
-
-        document.getElementById('dateInput').valueAsDate = new Date();
 
         window.changeViewMode = function(mode) {
             currentViewMode = mode;
