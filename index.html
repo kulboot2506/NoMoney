@@ -56,14 +56,14 @@
     <div id="mainApp" class="max-w-4xl mx-auto p-4 space-y-6 mt-2 opacity-0 transition-opacity duration-300">
         
         <!-- Filter Section -->
-        <div class="flex gap-2 overflow-x-auto no-scrollbar pb-2 -mx-4 px-4 md:mx-0 md:px-0">
-            <div class="flex-shrink-0 bg-white rounded-full px-4 py-2 shadow-sm border border-gray-100 flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
+            <div class="bg-white rounded-2xl px-4 py-2 shadow-sm border border-gray-100 flex items-center gap-2">
                 <i class="far fa-calendar-alt text-blue-500"></i>
-                <select id="monthFilter" onchange="window.changeMonth()" class="bg-transparent outline-none text-sm font-medium cursor-pointer">
-                    <option value="all">ดูทุกเดือน</option>
-                </select>
+                <input type="month" id="monthPicker" onchange="window.changeMonth()" class="bg-transparent outline-none text-sm font-medium cursor-pointer text-gray-700">
+                <button onclick="window.resetMonthFilter()" class="text-xs text-gray-400 hover:text-red-500 ml-1 transition" title="ดูทุกเดือน"><i class="fas fa-times-circle"></i></button>
             </div>
-            <div class="flex-shrink-0 bg-white rounded-full px-4 py-2 shadow-sm border border-gray-100 flex items-center gap-2">
+            
+            <div class="bg-white rounded-2xl px-4 py-2 shadow-sm border border-gray-100 flex items-center gap-2">
                 <i class="fas fa-filter text-blue-500"></i>
                 <select id="paymentFilter" onchange="window.changePayment()" class="bg-transparent outline-none text-sm font-medium cursor-pointer">
                     <option value="all">ทุกช่องทาง</option>
@@ -76,16 +76,16 @@
         <!-- Summary Cards -->
         <div class="bg-gradient-to-br from-blue-500 to-blue-700 rounded-3xl p-6 text-white shadow-lg">
             <p class="text-blue-100 text-sm font-medium mb-1">ยอดเงินคงเหลือสุทธิ</p>
-            <p class="text-4xl font-bold tracking-tight mb-6">฿<span id="totalBalance">0</span></p>
+            <p class="text-4xl font-bold tracking-tight mb-6">฿<span id="totalBalance">0.00</span></p>
             
             <div class="grid grid-cols-2 gap-4 bg-white/10 rounded-2xl p-4 backdrop-blur-sm">
                 <div>
                     <p class="text-blue-100 text-xs mb-1"><i class="fas fa-arrow-down mr-1"></i> รายรับรวม</p>
-                    <p class="text-lg font-semibold text-green-300">฿<span id="totalIncome">0</span></p>
+                    <p class="text-lg font-semibold text-green-300">฿<span id="totalIncome">0.00</span></p>
                 </div>
                 <div>
                     <p class="text-blue-100 text-xs mb-1"><i class="fas fa-arrow-up mr-1"></i> รายจ่ายรวม</p>
-                    <p class="text-lg font-semibold text-red-300">฿<span id="totalExpense">0</span></p>
+                    <p class="text-lg font-semibold text-red-300">฿<span id="totalExpense">0.00</span></p>
                 </div>
             </div>
         </div>
@@ -152,7 +152,8 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-600 mb-2">จำนวนเงิน (บาท)</label>
-                    <input type="number" id="amount" required min="1" placeholder="0.00" class="w-full bg-gray-50 border border-gray-200 p-3 text-lg font-semibold text-blue-600 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
+                    <!-- ปรับให้ใส่ทศนิยมได้โดยใช้ step="any" และ min="0.01" -->
+                    <input type="number" id="amount" required min="0.01" step="any" placeholder="0.00" class="w-full bg-gray-50 border border-gray-200 p-3 text-lg font-semibold text-blue-600 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:outline-none transition">
                 </div>
 
                 <div>
@@ -188,7 +189,6 @@
         <div>
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 px-1">
                 <h2 class="text-lg font-bold text-gray-800">ประวัติรายการ</h2>
-                <!-- View Mode Tabs (รายวัน / รายเดือน / รายปี) -->
                 <div class="flex bg-gray-200 p-1 rounded-2xl w-full sm:w-auto">
                     <button onclick="window.changeViewMode('daily')" id="btnDaily" class="flex-1 sm:flex-initial px-4 py-1.5 text-xs font-bold rounded-xl bg-white text-blue-600 shadow-sm transition">รายวัน</button>
                     <button onclick="window.changeViewMode('monthly')" id="btnMonthly" class="flex-1 sm:flex-initial px-4 py-1.5 text-xs font-bold rounded-xl text-gray-600 transition">รายเดือน</button>
@@ -196,7 +196,6 @@
                 </div>
             </div>
 
-            <!-- Container แสดงผลแบบกลุ่ม -->
             <div id="groupedExpenseList" class="space-y-4"></div>
 
             <div id="emptyState" class="hidden text-center py-12 px-4">
@@ -285,7 +284,7 @@
         let myLineChart = null;
         let currentMonthFilter = 'all'; 
         let currentPaymentFilter = 'all';
-        let currentViewMode = 'daily'; // daily, monthly, yearly
+        let currentViewMode = 'daily'; 
         let editingId = null; 
         let unsubscribe = null;
 
@@ -297,12 +296,12 @@
         const cancelBtn = document.getElementById('cancelBtn');
         const formTitle = document.getElementById('formTitle');
         const repeatConfigDiv = document.getElementById('repeatConfig');
+        const monthPicker = document.getElementById('monthPicker');
 
         document.getElementById('dateInput').valueAsDate = new Date();
 
         window.changeViewMode = function(mode) {
             currentViewMode = mode;
-            // สลับสีปุ่ม Tab
             document.getElementById('btnDaily').className = mode === 'daily' ? 'flex-1 sm:flex-initial px-4 py-1.5 text-xs font-bold rounded-xl bg-white text-blue-600 shadow-sm transition' : 'flex-1 sm:flex-initial px-4 py-1.5 text-xs font-bold rounded-xl text-gray-600 transition';
             document.getElementById('btnMonthly').className = mode === 'monthly' ? 'flex-1 sm:flex-initial px-4 py-1.5 text-xs font-bold rounded-xl bg-white text-blue-600 shadow-sm transition' : 'flex-1 sm:flex-initial px-4 py-1.5 text-xs font-bold rounded-xl text-gray-600 transition';
             document.getElementById('btnYearly').className = mode === 'yearly' ? 'flex-1 sm:flex-initial px-4 py-1.5 text-xs font-bold rounded-xl bg-white text-blue-600 shadow-sm transition' : 'flex-1 sm:flex-initial px-4 py-1.5 text-xs font-bold rounded-xl text-gray-600 transition';
@@ -352,26 +351,22 @@
             categorySelect.dispatchEvent(new Event('change'));
         };
 
-        function populateMonths() {
-            const monthSet = new Set();
-            expenses.forEach(item => {
-                const parts = item.date.split('/');
-                if(parts.length === 3) monthSet.add(`${parts[1]}/${parts[2]}`);
-            });
-            const sortedMonths = Array.from(monthSet).sort((a, b) => {
-                const [mA, yA] = a.split('/'); const [mB, yB] = b.split('/');
-                return new Date(yB, mB - 1) - new Date(yA, mA - 1);
-            });
-            let optionsHTML = '<option value="all">ดูทุกเดือน</option>';
-            sortedMonths.forEach(m => {
-                const isSelected = m === currentMonthFilter ? 'selected' : '';
-                optionsHTML += `<option value="${m}" ${isSelected}>เดือน ${m}</option>`;
-            });
-            document.getElementById('monthFilter').innerHTML = optionsHTML;
-        }
+        window.changeMonth = function() {
+            const val = monthPicker.value; 
+            currentMonthFilter = val ? val : 'all';
+            updateUI();
+        };
 
-        window.changeMonth = function() { currentMonthFilter = document.getElementById('monthFilter').value; updateUI(); };
-        window.changePayment = function() { currentPaymentFilter = document.getElementById('paymentFilter').value; updateUI(); };
+        window.resetMonthFilter = function() {
+            monthPicker.value = '';
+            currentMonthFilter = 'all';
+            updateUI();
+        };
+
+        window.changePayment = function() { 
+            currentPaymentFilter = document.getElementById('paymentFilter').value; 
+            updateUI(); 
+        };
 
         function updateCharts(filteredData) {
             Chart.defaults.font.family = "'Prompt', sans-serif";
@@ -425,19 +420,31 @@
         }
 
         function updateUI() {
-            populateMonths(); 
             let filteredExpenses = expenses;
-            if (currentMonthFilter !== 'all') filteredExpenses = filteredExpenses.filter(item => item.date.includes(currentMonthFilter));
-            if (currentPaymentFilter !== 'all') filteredExpenses = filteredExpenses.filter(item => item.payment === currentPaymentFilter);
+
+            if (currentMonthFilter !== 'all') {
+                filteredExpenses = filteredExpenses.filter(item => {
+                    const parts = item.date.split('/'); 
+                    if (parts.length === 3) {
+                        const itemYYYYMM = `${parts[2]}-${parts[1]}`;
+                        return itemYYYYMM === currentMonthFilter;
+                    }
+                    return false;
+                });
+            }
+
+            if (currentPaymentFilter !== 'all') {
+                filteredExpenses = filteredExpenses.filter(item => item.payment === currentPaymentFilter);
+            }
 
             groupedExpenseList.innerHTML = '';
             let tIncome = 0, tExpense = 0;
 
             if (filteredExpenses.length === 0) {
                 emptyState.classList.remove('hidden');
-                document.getElementById('totalBalance').innerText = '0';
-                document.getElementById('totalIncome').innerText = '0';
-                document.getElementById('totalExpense').innerText = '0';
+                document.getElementById('totalBalance').innerText = '0.00';
+                document.getElementById('totalIncome').innerText = '0.00';
+                document.getElementById('totalExpense').innerText = '0.00';
                 return;
             } else {
                 emptyState.classList.add('hidden');
@@ -448,29 +455,27 @@
                 else tExpense += item.amount;
             });
 
-            document.getElementById('totalBalance').innerText = (tIncome - tExpense).toLocaleString();
-            document.getElementById('totalIncome').innerText = tIncome.toLocaleString();
-            document.getElementById('totalExpense').innerText = tExpense.toLocaleString();
+            document.getElementById('totalBalance').innerText = (tIncome - tExpense).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('totalIncome').innerText = tIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('totalExpense').innerText = tExpense.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
             updateCharts(filteredExpenses);
 
-            // จัดกลุ่มข้อมูลตามมุมมอง (Daily, Monthly, Yearly)
             const groups = {};
             filteredExpenses.forEach(item => {
                 const [d, m, y] = item.date.split('/');
-                let groupKey = item.date; // ค่าเริ่มต้น (รายวัน)
+                let groupKey = item.date; 
                 
                 if (currentViewMode === 'monthly') {
-                    groupKey = `${m}/${y}`; // รวมเป็นเดือน/ปี
+                    groupKey = `${m}/${y}`; 
                 } else if (currentViewMode === 'yearly') {
-                    groupKey = `${y}`; // รวมเป็นปี
+                    groupKey = `${y}`; 
                 }
 
                 if (!groups[groupKey]) groups[groupKey] = [];
                 groups[groupKey].push(item);
             });
 
-            // เรียงลำดับกลุ่ม (ล่าสุดมาก่อน)
             const sortedGroupKeys = Object.keys(groups).sort((a, b) => {
                 if (currentViewMode === 'yearly') return b.localeCompare(a);
                 if (currentViewMode === 'monthly') {
@@ -481,11 +486,9 @@
                 return new Date(y2, m2 - 1, d2) - new Date(y1, m1 - 1, d1);
             });
 
-            // สร้าง HTML แสดงผลทีละกลุ่ม
             sortedGroupKeys.forEach(groupKey => {
                 const itemsInGroup = groups[groupKey];
                 
-                // คำนวณสรุปยอดในกลุ่มนั้นๆ
                 let groupIncome = 0, groupExpense = 0;
                 itemsInGroup.forEach(i => {
                     if (i.transType === 'รายรับ') groupIncome += i.amount;
@@ -495,7 +498,6 @@
                 const groupContainer = document.createElement('div');
                 groupContainer.className = "bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-4";
 
-                // Header ของแต่ละกลุ่ม (แสดงวันที่/เดือน/ปี และยอดรวม)
                 let headerTitle = `📅 วันที่ ${groupKey}`;
                 if (currentViewMode === 'monthly') headerTitle = `🗓️ เดือน ${groupKey}`;
                 if (currentViewMode === 'yearly') headerTitle = `📆 ปี พ.ศ. ${parseInt(groupKey)+543} (${groupKey})`;
@@ -504,16 +506,13 @@
                     <div class="bg-gray-50 px-5 py-3 border-b border-gray-100 flex justify-between items-center">
                         <span class="text-xs font-bold text-gray-600">${headerTitle}</span>
                         <div class="text-xs font-bold space-x-2">
-                            ${groupIncome > 0 ? `<span class="text-green-600">+฿${groupIncome.toLocaleString()}</span>` : ''}
-                            ${groupExpense > 0 ? `<span class="text-red-500">-฿${groupExpense.toLocaleString()}</span>` : ''}
+                            ${groupIncome > 0 ? `<span class="text-green-600">+฿${groupIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>` : ''}
+                            ${groupExpense > 0 ? `<span class="text-red-500">-฿${groupExpense.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>` : ''}
                         </div>
                     </div>
                 `;
 
-                // รายการย่อยข้างในกลุ่ม
                 let itemsHTML = '<div class="divide-y divide-gray-50">';
-                
-                // เรียงรายการข้างในกลุ่มจากใหม่ไปเก่า
                 itemsInGroup.sort((a, b) => {
                     const [d1, m1, y1] = a.date.split('/'); const [d2, m2, y2] = b.date.split('/');
                     return new Date(y2, m2 - 1, d2) - new Date(y1, m1 - 1, d1);
@@ -525,7 +524,6 @@
                     let amountColor = item.transType === 'รายรับ' ? 'text-green-500' : 'text-gray-800';
                     let amountPrefix = item.transType === 'รายรับ' ? '+' : '-';
 
-                    // แสดงวันที่ย่อยเฉพาะกรณีอยู่ในโหมดรายเดือนหรือรายปี
                     let dateSubText = currentViewMode !== 'daily' ? `<span class="text-[10px] text-gray-400 mr-2"><i class="far fa-calendar-alt mr-1"></i>${item.date}</span>` : '';
 
                     itemsHTML += `
@@ -539,7 +537,7 @@
                                 <div class="text-[11px] text-gray-500 mt-0.5">${payIcon}${item.payment}</div>
                             </div>
                             <div class="flex items-center gap-4">
-                                <div class="text-base font-bold ${amountColor}">${amountPrefix}฿${item.amount.toLocaleString()}</div>
+                                <div class="text-base font-bold ${amountColor}">${amountPrefix}฿${item.amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
                                 <div class="flex gap-1">
                                     <button onclick="window.editExpense('${item.id}')" class="w-7 h-7 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center hover:bg-blue-100 transition"><i class="fas fa-edit text-xs"></i></button>
                                     <button onclick="window.deleteExpense('${item.id}')" class="w-7 h-7 rounded-full bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 transition"><i class="fas fa-trash text-xs"></i></button>
@@ -628,9 +626,6 @@
                     }
                     document.getElementById('desc').value = '';
                     document.getElementById('amount').value = '';
-                }
-                if(!editingId && parseInt(document.getElementById('repeatCount').value) > 1) {
-                    document.getElementById('monthFilter').value = 'all'; currentMonthFilter = 'all';
                 }
             } catch (error) {
                 console.error("Error writing document: ", error);
